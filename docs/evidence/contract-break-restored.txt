@@ -1,0 +1,101 @@
+[INFO] Scanning for projects...
+[INFO] Loaded 24275 auto-discovered prefixes for remote repository central (prefixes-central.txt)
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Community Battery SOA :: Parent                                    [pom]
+[INFO] Community Battery SOA :: Common Domain                             [jar]
+[INFO] Community Battery SOA :: Discharge Allocation Service              [jar]
+[INFO] 
+[INFO] ---------< com.communitybattery.soa:community-battery-parent >----------
+[INFO] Building Community Battery SOA :: Parent 1.0.0-SNAPSHOT            [1/3]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] ---------------< com.communitybattery.soa:common-domain >---------------
+[INFO] Building Community Battery SOA :: Common Domain 1.0.0-SNAPSHOT     [2/3]
+[INFO]   from common-domain\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 74 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ common-domain ---
+[INFO] argLine set to -javaagent:C:\\Users\\anees\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=C:\\Users\\anees\\OneDrive\\Documents\\CommunityBatterySOA\\common-domain\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ common-domain ---
+[INFO] skip non existing resourceDirectory C:\Users\anees\OneDrive\Documents\CommunityBatterySOA\common-domain\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ common-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ common-domain ---
+[INFO] skip non existing resourceDirectory C:\Users\anees\OneDrive\Documents\CommunityBatterySOA\common-domain\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ common-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ common-domain ---
+[INFO] 
+[INFO] --- jacoco:0.8.12:report (report) @ common-domain ---
+[INFO] Loading execution data file C:\Users\anees\OneDrive\Documents\CommunityBatterySOA\common-domain\target\jacoco.exec
+[INFO] Analyzed bundle 'Community Battery SOA :: Common Domain' with 5 classes
+[INFO] 
+[INFO] -------< com.communitybattery.soa:discharge-allocation-service >--------
+[INFO] Building Community Battery SOA :: Discharge Allocation Service 1.0.0-SNAPSHOT [3/3]
+[INFO]   from discharge-allocation-service\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 24275 auto-discovered prefixes for remote repository maven-central (prefixes-maven-central.txt)
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to flyway-community-db-support (https://maven.pkg.github.com/flyway/flyway-community-db-support): HTTP Status: 401
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ discharge-allocation-service ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ discharge-allocation-service ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ discharge-allocation-service ---
+[INFO] skip non existing resourceDirectory C:\Users\anees\OneDrive\Documents\CommunityBatterySOA\discharge-allocation-service\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ discharge-allocation-service ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ discharge-allocation-service ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+Oct 28, 2026 8:16:00 PM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 3 'junit-platform.properties' configuration files on the classpath (see below); only the first (*) will be used.
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-clients/3.8.1/kafka-clients-3.8.1-test.jar!/junit-platform.properties (*)
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-server-common/3.8.1/kafka-server-common-3.8.1-test.jar!/junit-platform.properties
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka_2.13/3.8.1/kafka_2.13-3.8.1-test.jar!/junit-platform.properties
+Oct 28, 2026 8:16:00 PM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 3 'junit-platform.properties' configuration files on the classpath (see below); only the first (*) will be used.
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-clients/3.8.1/kafka-clients-3.8.1-test.jar!/junit-platform.properties (*)
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-server-common/3.8.1/kafka-server-common-3.8.1-test.jar!/junit-platform.properties
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka_2.13/3.8.1/kafka_2.13-3.8.1-test.jar!/junit-platform.properties
+Oct 28, 2026 8:16:01 PM org.junit.platform.launcher.core.LauncherConfigurationParameters loadClasspathResource
+WARNING: Discovered 3 'junit-platform.properties' configuration files on the classpath (see below); only the first (*) will be used.
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-clients/3.8.1/kafka-clients-3.8.1-test.jar!/junit-platform.properties (*)
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka-server-common/3.8.1/kafka-server-common-3.8.1-test.jar!/junit-platform.properties
+- jar:file:/C:/Users/anees/.m2/repository/org/apache/kafka/kafka_2.13/3.8.1/kafka_2.13-3.8.1-test.jar!/junit-platform.properties
+[INFO] Running com.communitybattery.discharge.contract.DischargeRequestedEventSchemaTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.551 s -- in com.communitybattery.discharge.contract.DischargeRequestedEventSchemaTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Community Battery SOA :: Parent 1.0.0-SNAPSHOT:
+[INFO] 
+[INFO] Community Battery SOA :: Parent .................... SUCCESS [  0.010 s]
+[INFO] Community Battery SOA :: Common Domain ............. SUCCESS [  4.287 s]
+[INFO] Community Battery SOA :: Discharge Allocation Service SUCCESS [  5.125 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.323 s
+[INFO] Finished at: 2026-10-28T20:16:02+05:30
+[INFO] ------------------------------------------------------------------------
+

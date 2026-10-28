@@ -1,0 +1,90 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+          issuer-uri: ${AUTH_ISSUER_URI:http://localhost:8081}
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=0
+        - id: battery-state-service
+          uri: lb://battery-state-service
+          predicates:
+            - Path=/api/battery/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                methods: GET
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+        - id: reserve-policy-service
+          uri: lb://reserve-policy-service
+          predicates:
+            - Path=/api/reserve/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                methods: GET
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+        - id: discharge-allocation-service
+          uri: lb://discharge-allocation-service
+          predicates:
+            - Path=/api/discharges/**
+      httpclient:
+        response-timeout: 10s
+        connect-timeout: 3000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USERNAME:eureka-admin}:${EUREKA_PASSWORD:eureka-secret}@${EUREKA_HOST:localhost}:8761/eureka/
+    registry-fetch-interval-seconds: 5
+    eureka-server-connect-timeout-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [correlationId=%X{correlationId}] %logger{36} - %msg%n"

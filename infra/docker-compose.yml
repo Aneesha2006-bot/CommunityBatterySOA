@@ -1,0 +1,194 @@
+services:
+  # -------------------------------------------------------------
+  # Infrastructure: PostgreSQL with multi-database init
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cb-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cb_user
+      POSTGRES_PASSWORD: cb_password
+      POSTGRES_DB: cb_main
+    volumes:
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cb_user -d cb_main"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # Infrastructure: Apache Kafka in KRaft mode (no Zookeeper)
+  # -------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: cb-kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+  # -------------------------------------------------------------
+  # Service Discovery: Netflix Eureka
+  # -------------------------------------------------------------
+  discovery-server:
+    build:
+      context: ../discovery-server
+    container_name: cb-discovery
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
+
+  # -------------------------------------------------------------
+  # Auth Service: RS256 JWT & Consent
+  # -------------------------------------------------------------
+  auth-service:
+    build:
+      context: ../auth-service
+    container_name: cb-auth
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8081
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: cb_user
+      SPRING_DATASOURCE_PASSWORD: cb_password
+
+  # -------------------------------------------------------------
+  # Reserve Policy Service
+  # -------------------------------------------------------------
+  reserve-policy-service:
+    build:
+      context: ../reserve-policy-service
+    container_name: cb-reserve-policy
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8083
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/policy_db
+      SPRING_DATASOURCE_USERNAME: cb_user
+      SPRING_DATASOURCE_PASSWORD: cb_password
+      AUTH_SERVICE_JWK_SET_URI: http://auth-service:8081/.well-known/jwks.json
+
+  # -------------------------------------------------------------
+  # Battery State Service
+  # -------------------------------------------------------------
+  battery-state-service:
+    build:
+      context: ../battery-state-service
+    container_name: cb-battery-state
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8082
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/battery_db
+      SPRING_DATASOURCE_USERNAME: cb_user
+      SPRING_DATASOURCE_PASSWORD: cb_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      AUTH_SERVICE_JWK_SET_URI: http://auth-service:8081/.well-known/jwks.json
+
+  # -------------------------------------------------------------
+  # Discharge Allocation Service - Instance 1
+  # -------------------------------------------------------------
+  discharge-allocation-service-1:
+    build:
+      context: ../discharge-allocation-service
+    container_name: cb-discharge-1
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8084
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/discharge_db
+      SPRING_DATASOURCE_USERNAME: cb_user
+      SPRING_DATASOURCE_PASSWORD: cb_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      AUTH_SERVICE_JWK_SET_URI: http://auth-service:8081/.well-known/jwks.json
+
+  # -------------------------------------------------------------
+  # Discharge Allocation Service - Instance 2 (HA & Load Balanced)
+  # -------------------------------------------------------------
+  discharge-allocation-service-2:
+    build:
+      context: ../discharge-allocation-service
+    container_name: cb-discharge-2
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8085
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/discharge_db
+      SPRING_DATASOURCE_USERNAME: cb_user
+      SPRING_DATASOURCE_PASSWORD: cb_password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      AUTH_SERVICE_JWK_SET_URI: http://auth-service:8081/.well-known/jwks.json
+
+  # -------------------------------------------------------------
+  # Edge Gateway: Spring Cloud Gateway
+  # -------------------------------------------------------------
+  api-gateway:
+    build:
+      context: ../api-gateway
+    container_name: cb-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      discovery-server:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      AUTH_SERVICE_JWK_SET_URI: http://auth-service:8081/.well-known/jwks.json

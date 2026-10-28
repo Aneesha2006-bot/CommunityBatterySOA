@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Reserve Policy Service API
+  description: Protected emergency reserve floor and per-member daily allocation quota policies.
+  version: 1.0.0
+paths:
+  /api/reserve/policy:
+    get:
+      summary: Retrieve current active reserve policy
+      operationId: getReservePolicy
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current reserve policy configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reserveFloorKwh:
+                    type: number
+                    example: 30.0
+                  perMemberDailyCapKwh:
+                    type: number
+                    example: 50.0
+                  version:
+                    type: integer
+                    example: 1
+                  updatedBy:
+                    type: string
+                    example: coordinator-1
+                  updatedAt:
+                    type: string
+                    format: date-time
+    put:
+      summary: Update reserve floor and member quota (Coordinator only)
+      operationId: updateReservePolicy
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reserveFloorKwh, perMemberDailyCapKwh]
+              properties:
+                reserveFloorKwh:
+                  type: number
+                  minimum: 0.0
+                  example: 35.0
+                perMemberDailyCapKwh:
+                  type: number
+                  minimum: 0.0
+                  example: 50.0
+      responses:
+        '200':
+          description: Updated reserve policy
+        '403':
+          description: Forbidden - requires energyCoordinator role
+        '409':
+          description: Optimistic lock conflict (stale version)
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

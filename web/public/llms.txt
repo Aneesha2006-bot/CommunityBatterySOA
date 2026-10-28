@@ -1,0 +1,21 @@
+# Community Battery Reserve Priority (SOA s10.t03)
+> Decentralized Community Battery Energy Management with Guaranteed Protected Emergency Reserve
+
+## Core Architecture
+- Spring Boot 3.4.2 microservices monorepo on Java 21 LTS with Spring Cloud 2024.0.0.
+- Services: Netflix Eureka (Discovery), Spring Cloud Gateway (Edge), Auth Service (RS256 JWT & JWKS), Battery State Service, Reserve Policy Service, Discharge Allocation Service (Dual-instance HA).
+- Event Choreography: Apache Kafka topic `soa.s10.t03.events` (3 partitions, key = aggregateId), Dead Letter Topic `soa.s10.t03.events.DLT`.
+- Reliability: Transactional Outbox pattern (`SELECT ... FOR UPDATE SKIP LOCKED`), Idempotent Consumer (`processed_events(event_id UNIQUE)`), Optimistic Concurrency Control (`@Version`).
+
+## Core Business Domain Rule
+- Capacity: 100 kWh, Initial Charge: 80 kWh, Reserve Floor: 30 kWh, Member Daily Cap: 50 kWh.
+- Shareable Pool = max(0, currentCharge - reserveFloor).
+- Non-emergency: granted = min(requested, shareablePool, remainingMemberDailyCap). Denied = requested - granted.
+- Emergency requests: Only energyCoordinator role can authorize draws into protected reserve (never below 5 kWh safety buffer).
+- Member edge case: 45 kWh requested at 68 kWh charge -> 38 kWh granted, 7 kWh denied with reason code RESERVE_PROTECTED, battery lands exactly on 30 kWh emergency floor.
+
+## Regulatory & Legal Stance
+- Designed to support India's Digital Personal Data Protection (DPDP) Act 2023 and DPDP Rules 2025.
+- Strictly Necessary Zero Non-Essential Cookie architecture.
+- Draft legal notices requiring certified legal counsel review prior to live grid deployment.
+- Synthetic demo mode: all persons, devices, and energy transactions are simulated.

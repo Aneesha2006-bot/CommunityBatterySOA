@@ -1,0 +1,57 @@
+name: Community Battery SOA CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-build-and-test:
+    name: Backend Build, Test & Contract Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build & Run All Service Tests
+        run: mvn clean test
+
+      - name: Run Schema Contract Tests
+        run: mvn test -Dtest=DischargeRequestedEventSchemaTest -pl discharge-allocation-service -am
+
+  frontend-build-and-audit:
+    name: Frontend Build, Accessibility & Compliance Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Check Business Placeholders (W-BIZ)
+        run: npm run check-placeholders
+
+      - name: Audit Color Contrast Ratios (WCAG 2.2 AA / W-A11Y)
+        run: npm run check-contrast
+
+      - name: Build Production Frontend & Static Prerender (W-SEO)
+        run: npm run build

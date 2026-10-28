@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://communitybattery.local/schemas/DischargeRequested.v1.json",
+  "title": "DischargeRequested",
+  "description": "Event emitted when a discharge allocation request is evaluated and decided.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "aggregateId",
+    "schemaVersion",
+    "occurredAt",
+    "correlationId",
+    "eventType",
+    "memberRef",
+    "requestedKwh",
+    "grantedKwh",
+    "deniedKwh",
+    "reasonCode",
+    "status",
+    "reserveFloorKwh",
+    "emergency"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier of this event instance (used for idempotent consumption)"
+    },
+    "aggregateId": {
+      "type": "string",
+      "description": "Identifier of the discharge request aggregate (used as Kafka message key)"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version number"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the decision was finalized"
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Distributed tracing correlation ID passed from API Gateway"
+    },
+    "eventType": {
+      "type": "string",
+      "const": "DischargeRequested",
+      "description": "Event discriminator"
+    },
+    "memberRef": {
+      "type": "string",
+      "description": "Pseudonymous member identifier (never raw PII)"
+    },
+    "requestedKwh": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Energy volume originally requested"
+    },
+    "grantedKwh": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Energy volume granted to the member"
+    },
+    "deniedKwh": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Energy volume denied to protect reserve or cap"
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": ["GRANTED", "RESERVE_PROTECTED", "MEMBER_CAP", "INVALID_REQUEST", "COORDINATOR_REVIEW_REQUIRED", "SYSTEM_ERROR"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["GRANTED", "PARTIALLY_GRANTED", "DENIED", "PENDING_COORDINATOR_REVIEW"]
+    },
+    "reserveFloorKwh": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Active reserve floor policy at decision time"
+    },
+    "emergency": {
+      "type": "boolean",
+      "description": "Whether the request was an authorized emergency draw"
+    }
+  },
+  "additionalProperties": false
+}

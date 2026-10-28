@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: Auth Service API
+  description: Local OAuth2/OIDC-style token issuer and privacy compliance consent intake for Community Battery SOA.
+  version: 1.0.0
+paths:
+  /auth/token:
+    post:
+      summary: Obtain JWT access token via synthetic credentials
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: member-a
+                password:
+                  type: string
+                  example: member-a-pass
+      responses:
+        '200':
+          description: Token issued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  tokenType:
+                    type: string
+                    example: Bearer
+                  expiresIn:
+                    type: integer
+                    example: 3600
+                  subject:
+                    type: string
+                    example: subj-member-a
+                  roles:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: Invalid credentials
+  /.well-known/jwks.json:
+    get:
+      summary: JSON Web Key Set (JWKS) public key endpoint
+      operationId: getJwks
+      responses:
+        '200':
+          description: JWKS public keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+  /api/consent:
+    post:
+      summary: Record user purpose consent
+      operationId: recordConsent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, granted]
+              properties:
+                purpose:
+                  type: string
+                  example: ENERGY_DISCHARGE_ALLOCATION
+                granted:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Consent recorded
+  /api/consent/{purpose}:
+    delete:
+      summary: Withdraw consent for a specific purpose
+      operationId: withdrawConsent
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: purpose
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consent withdrawn
+  /api/privacy/requests:
+    post:
+      summary: Submit DPDP privacy request (access, correction, erasure, grievance)
+      operationId: submitPrivacyRequest
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestType, description]
+              properties:
+                requestType:
+                  type: string
+                  enum: [ACCESS, CORRECTION, ERASURE, GRIEVANCE]
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Privacy request registered
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

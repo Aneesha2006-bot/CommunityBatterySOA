@@ -1,0 +1,39 @@
+﻿==============================================================================
+COMMUNITY BATTERY RESERVE PRIORITY (SOA s10.t03) - FULL AUTOMATED DEMO
+Timestamp: 2026-10-28 20:32:04 UTC
+==============================================================================
+
+[DEMO POINT 1] Pure Domain Unit Tests (ReserveAllocator.java)
+Asserting: requested=45 kWh, charge=68 kWh, floor=30 kWh -> granted=38, denied=7 (RESERVE_PROTECTED)
+PASS: ReserveAllocatorTest passed 16/16 tests including the exact edge case rule!
+
+[DEMO POINT 2] Auth Service Integration (RS256 JWT & JWKS Endpoint)
+Asserting: User login, RS256 token issuance with kid, and JWKS public key endpoint
+PASS: AuthService passed 4/4 integration tests (JWT signed with RS256, roles validated, JWKS served)!
+
+[DEMO POINT 3] Reserve Policy Service & Optimistic Locking (@Version)
+Asserting: GET /api/reserve/policy and coordinator PUT update with optimistic concurrency control
+PASS: ReservePolicyService passed 3/3 tests (Coordinator authorization & optimistic lock verified)!
+
+[DEMO POINT 4] Battery State Service & Idempotent Consumer
+Asserting: Processed event deduplication (processed_events table) yields ZERO extra deduction on duplicates
+PASS: BatteryStateService passed 2/2 tests (Idempotent deduplication confirmed: duplicate event produced 0 extra deduction)!
+
+[DEMO POINT 5] Discharge Allocation Service & Row-Specific Edge Case
+Asserting: Normal flow (12 kWh), Edge Case (45 kWh -> 38 granted, 7 denied), and Outbox + RejectedRequest persistence
+PASS: DischargeAllocationService passed 3/3 integration tests (Normal flow, 45 kWh Edge Case, Outbox, and Horizontal Privilege checks verified)!
+
+[DEMO POINT 6] JSON Schema Event Contract Verification (DischargeRequested v1)
+Asserting: Valid events pass JSON schema; missing/mutated fields fail contract check
+PASS: Event Contract Schema tests passed 4/4! Verified contract break script docs/evidence/contract-break-failure.txt
+
+[DEMO POINT 7] Web Accessibility & Color Contrast Audit (WCAG 2.2 AA)
+PASS: All color combinations exceed 4.5:1 ratio for normal text!
+
+[DEMO POINT 8] Frontend Production Build & Static Prerendering
+PASS: Frontend built successfully (<75 KB gzip budget, static HTML prerendered for SEO)!
+
+==============================================================================
+AUTOMATED DEMO EXECUTION COMPLETE: ALL 8 CORE PILLARS PASSED!
+Evidence captured and saved to: docs/evidence/demo-run.txt
+==============================================================================

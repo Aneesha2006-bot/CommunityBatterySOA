@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Discharge Allocation Service API
+  description: Evaluation of energy discharge requests, quota enforcement, emergency draws, transactional outbox publishing, and rejected requests ledger.
+  version: 1.0.0
+paths:
+  /api/discharges:
+    post:
+      summary: Submit a discharge energy request
+      operationId: requestDischarge
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestedKwh]
+              properties:
+                requestedKwh:
+                  type: number
+                  minimum: 0.01
+                  example: 12.0
+                emergency:
+                  type: boolean
+                  default: false
+                memberRef:
+                  type: string
+                  description: Optional override for coordinator submitting on behalf of member
+      responses:
+        '200':
+          description: Request evaluated and decided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DischargeRequestResponse'
+        '400':
+          description: Invalid request payload (non-positive or excessive kWh)
+    get:
+      summary: List discharge requests
+      description: Members see only their own requests; energyCoordinators see requests across all members.
+      operationId: listDischarges
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of discharge requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DischargeRequestResponse'
+  /api/discharges/{id}:
+    get:
+      summary: Get details of a single discharge request
+      operationId: getDischargeById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discharge request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DischargeRequestResponse'
+        '404':
+          description: Request not found or unauthorized to view (horizontal escalation prevention)
+  /api/discharges/rejected:
+    get:
+      summary: List rejected or partially denied discharge requests
+      description: Members see only their own rejections; energyCoordinators see all rejections.
+      operationId: listRejectedDischarges
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of rejected requests with reason codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    requestId:
+                      type: string
+                    memberRef:
+                      type: string
+                    deniedKwh:
+                      type: number
+                    reasonCode:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    DischargeRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        memberRef:
+          type: string
+        requestedKwh:
+          type: number
+        grantedKwh:
+          type: number
+        deniedKwh:
+          type: number
+        reasonCode:
+          type: string
+        status:
+          type: string
+          enum: [GRANTED, PARTIALLY_GRANTED, DENIED, PENDING_COORDINATOR_REVIEW]
+        emergency:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        processedByInstance:
+          type: string
+          example: discharge-allocation-service:8084

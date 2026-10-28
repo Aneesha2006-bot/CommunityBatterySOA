@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: Battery State Service API
+  description: Physical state, aggregate capacity, committed draw ledger, and charge tracking for the shared community battery.
+  version: 1.0.0
+paths:
+  /api/battery/state:
+    get:
+      summary: Retrieve current battery charge state and capacity
+      description: Members see summary charge and capacity; energyCoordinators see full draw ledger detail and health metrics.
+      operationId: getBatteryState
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Battery state returned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  capacityKwh:
+                    type: number
+                    example: 100.0
+                  currentChargeKwh:
+                    type: number
+                    example: 80.0
+                  percentage:
+                    type: number
+                    example: 80.0
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                  version:
+                    type: integer
+                    example: 1
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

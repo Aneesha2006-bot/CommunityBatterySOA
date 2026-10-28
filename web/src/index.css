@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-slate-900 bg-slate-50 min-h-screen flex flex-col font-sans;
+  }
+
+  /* Accessible focus indicators */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-emerald-600 ring-offset-2;
+  }
+}
