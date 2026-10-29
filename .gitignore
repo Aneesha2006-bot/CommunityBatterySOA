@@ -13,6 +13,7 @@ target/
 *.zip
 *.tar.gz
 *.rar
+*.exe
 
 # Node / Web
 node_modules/

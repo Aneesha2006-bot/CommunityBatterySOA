@@ -1,9 +1,15 @@
-import { BatteryState, ReservePolicy, DischargeRequest, RejectedRequest, PrivacyRequest } from '../types';
+import { BatteryState, ReservePolicy, BatteryRequest, AppNotification, User, RequestPriority } from '../types';
+import { batteryStorage } from './batteryStorage';
 
 let currentAuthToken: string | null = null;
+let currentUser: User | null = null;
 
 export const setAuthToken = (token: string | null) => {
   currentAuthToken = token;
+};
+
+export const setCurrentUser = (user: User | null) => {
+  currentUser = user;
 };
 
 const getHeaders = () => {
@@ -16,218 +22,168 @@ const getHeaders = () => {
   return headers;
 };
 
-// Mock fallback state for standalone offline presentation
-let mockBatteryState: BatteryState = {
-  capacityKwh: 100.0,
-  currentChargeKwh: 80.0,
-  percentage: 80.0,
-  lastUpdated: new Date().toISOString(),
-  version: 1,
-};
-
-let mockPolicy: ReservePolicy = {
-  reserveFloorKwh: 30.0,
-  perMemberDailyCapKwh: 50.0,
-  version: 1,
-  updatedBy: 'coordinator-1',
-  updatedAt: new Date().toISOString(),
-};
-
-const mockDischarges: DischargeRequest[] = [
-  {
-    id: 'req-init-seed-1',
-    memberRef: 'subj-member-a',
-    requestedKwh: 12.0,
-    grantedKwh: 12.0,
-    deniedKwh: 0.0,
-    reasonCode: 'GRANTED',
-    status: 'GRANTED',
-    emergency: false,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    processedByInstance: 'discharge-allocation-service:8084',
-  },
-];
-
-const mockRejections: RejectedRequest[] = [];
-
 export const api = {
   // Battery State
   getBatteryState: async (): Promise<BatteryState> => {
     try {
       const res = await fetch('/api/battery/state', { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch battery state');
-      const data = await res.json();
-      mockBatteryState = data;
-      return data;
+      if (res.ok) {
+        const backendState = await res.json();
+        const local = batteryStorage.getBatteryState();
+        return {
+          ...local,
+          availableEnergyKwh: backendState.currentChargeKwh ?? local.availableEnergyKwh,
+          percentage: backendState.percentage ?? local.percentage,
+        };
+      }
     } catch {
-      return mockBatteryState;
+      // safe fallback to local persistence
     }
+    return batteryStorage.getBatteryState();
   },
 
   // Reserve Policy
   getReservePolicy: async (): Promise<ReservePolicy> => {
     try {
       const res = await fetch('/api/reserve/policy', { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch policy');
-      const data = await res.json();
-      mockPolicy = data;
-      return data;
+      if (res.ok) {
+        const backendPolicy = await res.json();
+        const local = batteryStorage.getPolicy();
+        return {
+          ...local,
+          reserveFloorKwh: backendPolicy.reserveFloorKwh ?? local.reserveFloorKwh,
+          perMemberDailyCapKwh: backendPolicy.perMemberDailyCapKwh ?? local.perMemberDailyCapKwh,
+        };
+      }
     } catch {
-      return mockPolicy;
+      // safe fallback
     }
+    return batteryStorage.getPolicy();
   },
 
   updateReservePolicy: async (floor: number, cap: number): Promise<ReservePolicy> => {
+    if (!currentUser) throw new Error('Not authenticated');
     try {
-      const res = await fetch('/api/reserve/policy', {
+      await fetch('/api/reserve/policy', {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ reserveFloorKwh: floor, perMemberDailyCapKwh: cap }),
       });
-      if (!res.ok) throw new Error('Failed to update policy');
-      const data = await res.json();
-      mockPolicy = data;
-      return data;
     } catch {
-      mockPolicy = {
-        ...mockPolicy,
-        reserveFloorKwh: floor,
-        perMemberDailyCapKwh: cap,
-        version: mockPolicy.version + 1,
-        updatedAt: new Date().toISOString(),
-      };
-      return mockPolicy;
+      // local fallback
     }
+    return batteryStorage.updatePolicy(floor, cap, currentUser);
   },
 
-  // Discharges
-  submitDischarge: async (requestedKwh: number, emergency = false, memberRef?: string): Promise<DischargeRequest> => {
-    try {
-      const res = await fetch('/api/discharges', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ requestedKwh, emergency, memberRef }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Request rejected');
-      }
-      return await res.json();
-    } catch {
-      // Local fallback calculation strictly implementing ReserveAllocator rule
-      const shareablePool = Math.max(0, mockBatteryState.currentChargeKwh - mockPolicy.reserveFloorKwh);
-      let granted = 0;
-      let denied = 0;
-      let status: 'GRANTED' | 'PARTIALLY_GRANTED' | 'DENIED' = 'DENIED';
-      let reason = 'RESERVE_PROTECTED';
-
-      if (emergency) {
-        // Coordinator authorized draw
-        const allowedPool = Math.max(0, mockBatteryState.currentChargeKwh - 5.0);
-        granted = Math.min(requestedKwh, allowedPool);
-        denied = requestedKwh - granted;
-        status = denied === 0 ? 'GRANTED' : (granted > 0 ? 'PARTIALLY_GRANTED' : 'DENIED');
-        reason = denied > 0 ? 'RESERVE_PROTECTED' : 'GRANTED';
-      } else {
-        granted = Math.min(requestedKwh, shareablePool, mockPolicy.perMemberDailyCapKwh);
-        denied = requestedKwh - granted;
-        if (granted === requestedKwh) {
-          status = 'GRANTED';
-          reason = 'GRANTED';
-        } else if (granted > 0) {
-          status = 'PARTIALLY_GRANTED';
-          reason = 'RESERVE_PROTECTED';
-        } else {
-          status = 'DENIED';
-          reason = 'RESERVE_PROTECTED';
-        }
-      }
-
-      mockBatteryState = {
-        ...mockBatteryState,
-        currentChargeKwh: Math.max(0, mockBatteryState.currentChargeKwh - granted),
-        percentage: Math.round(((mockBatteryState.currentChargeKwh - granted) / mockBatteryState.capacityKwh) * 100),
-        lastUpdated: new Date().toISOString(),
-      };
-
-      const record: DischargeRequest = {
-        id: 'req-' + Math.random().toString(36).substring(2, 9),
-        memberRef: memberRef || 'subj-current-user',
-        requestedKwh,
-        grantedKwh: granted,
-        deniedKwh: denied,
-        reasonCode: reason,
-        status,
-        emergency,
-        createdAt: new Date().toISOString(),
-        processedByInstance: 'discharge-allocation-service:8084',
-      };
-
-      mockDischarges.unshift(record);
-
-      if (denied > 0) {
-        mockRejections.unshift({
-          id: mockRejections.length + 1,
-          requestId: record.id,
-          memberRef: record.memberRef,
-          deniedKwh: denied,
-          reasonCode: reason,
-          correlationId: 'corr-local-sim',
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      return record;
-    }
+  // Requests
+  getRequests: async (): Promise<BatteryRequest[]> => {
+    if (!currentUser) return [];
+    return batteryStorage.getRequestsForUser(currentUser);
   },
 
-  listDischarges: async (): Promise<DischargeRequest[]> => {
-    try {
-      const res = await fetch('/api/discharges', { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to list discharges');
-      return await res.json();
-    } catch {
-      return mockDischarges;
-    }
+  submitRequest: async (
+    requestedKwh: number,
+    priority: RequestPriority,
+    reason: string
+  ): Promise<BatteryRequest> => {
+    if (!currentUser) throw new Error('User must be logged in to submit a request');
+    return batteryStorage.submitRequest(currentUser, requestedKwh, priority, reason);
   },
 
-  listRejected: async (): Promise<RejectedRequest[]> => {
-    try {
-      const res = await fetch('/api/discharges/rejected', { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to list rejected discharges');
-      return await res.json();
-    } catch {
-      return mockRejections;
+  approveRequest: async (
+    requestId: string,
+    approvedKwh: number,
+    remarks: string
+  ): Promise<BatteryRequest> => {
+    if (!currentUser || currentUser.role !== 'coordinator') {
+      throw new Error('Only energy coordinators can approve requests');
     }
+    return batteryStorage.approveRequest(requestId, approvedKwh, remarks, currentUser);
   },
 
-  // Consent & Privacy Rights
-  recordConsent: async (purpose: string, granted: boolean) => {
-    try {
-      await fetch('/api/consent', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ purpose, granted }),
-      });
-    } catch {
-      // offline safe
+  modifyAllocation: async (
+    requestId: string,
+    newApprovedKwh: number,
+    remarks: string
+  ): Promise<BatteryRequest> => {
+    if (!currentUser || currentUser.role !== 'coordinator') {
+      throw new Error('Only energy coordinators can modify allocations');
     }
+    return batteryStorage.approveRequest(requestId, newApprovedKwh, remarks, currentUser);
   },
 
-  submitPrivacyRequest: async (req: PrivacyRequest): Promise<{ id: string; message: string }> => {
-    try {
-      const res = await fetch('/api/privacy/requests', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(req),
-      });
-      if (res.ok) return await res.json();
-    } catch {
-      // fallback
+  allocateRequest: async (requestId: string): Promise<BatteryRequest> => {
+    if (!currentUser || currentUser.role !== 'coordinator') {
+      throw new Error('Only energy coordinators can commit allocations');
     }
+    return batteryStorage.allocateRequest(requestId, currentUser);
+  },
+
+  deallocateRequest: async (requestId: string, remarks: string): Promise<BatteryRequest> => {
+    if (!currentUser || currentUser.role !== 'coordinator') {
+      throw new Error('Only energy coordinators can deallocate energy');
+    }
+    return batteryStorage.deallocateRequest(requestId, remarks, currentUser);
+  },
+
+  rejectRequest: async (requestId: string, reason: string): Promise<BatteryRequest> => {
+    if (!currentUser || currentUser.role !== 'coordinator') {
+      throw new Error('Only energy coordinators can reject requests');
+    }
+    return batteryStorage.rejectRequest(requestId, reason, currentUser);
+  },
+
+  // Notifications
+  getNotifications: async (): Promise<AppNotification[]> => {
+    if (!currentUser) return [];
+    return batteryStorage.getNotifications(currentUser);
+  },
+
+  markNotificationRead: async (notifId: string): Promise<void> => {
+    batteryStorage.markNotificationRead(notifId);
+  },
+
+  markAllNotificationsRead: async (): Promise<void> => {
+    if (!currentUser) return;
+    batteryStorage.markAllNotificationsRead(currentUser);
+  },
+
+  // Compatibility methods for legacy views
+  submitDischarge: async (kwh: number, purposeOrEmergency?: string | boolean, ..._rest: any[]): Promise<any> => {
+    if (!currentUser) throw new Error('Not authenticated');
+    void _rest;
+    const isEmerg = typeof purposeOrEmergency === 'boolean' ? purposeOrEmergency : false;
+    const priority: RequestPriority = isEmerg ? 'EMERGENCY' : 'NORMAL';
+    const reason = typeof purposeOrEmergency === 'string' ? purposeOrEmergency : 'Residential appliances power';
+    const req = await batteryStorage.submitRequest(currentUser, kwh, priority, reason);
     return {
-      id: 'DPO-' + Math.floor(100000 + Math.random() * 900000),
-      message: 'Privacy request successfully recorded under DPDP Grievance Intake SLA.',
+      id: req.id,
+      status: req.status,
+      requestedKwh: req.requestedKwh,
+      grantedKwh: req.allocatedKwh ?? 0,
+      deniedKwh: 0,
+      reasonCode: 'SUCCESS',
+      createdAt: req.createdAt,
+    };
+  },
+
+  listDischarges: async (): Promise<any[]> => {
+    if (!currentUser) return [];
+    return batteryStorage.getRequestsForUser(currentUser);
+  },
+
+  listRejected: async (): Promise<any[]> => {
+    if (!currentUser) return [];
+    return batteryStorage.getRequestsForUser(currentUser).filter(r => r.status === 'REJECTED');
+  },
+
+  submitPrivacyRequest: async (typeOrPayload: any, details?: string): Promise<any> => {
+    return {
+      id: 'PR-' + Date.now(),
+      type: typeof typeOrPayload === 'string' ? typeOrPayload : typeOrPayload?.type,
+      details,
+      status: 'RECEIVED',
+      receivedAt: new Date().toISOString(),
     };
   },
 };

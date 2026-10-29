@@ -10,8 +10,13 @@ export const DashboardPage: React.FC = () => {
 
   const [state, setState] = useState<BatteryState>({
     capacityKwh: 100.0,
+    availableEnergyKwh: 80.0,
+    allocatedEnergyKwh: 0.0,
+    reserveFloorKwh: 30.0,
+    remainingShareableKwh: 50.0,
     currentChargeKwh: 80.0,
     percentage: 80.0,
+    status: 'Idle',
     lastUpdated: new Date().toISOString(),
     version: 1,
   });

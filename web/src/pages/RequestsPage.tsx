@@ -17,8 +17,8 @@ export const RequestsPage: React.FC = () => {
         const [reqs, rejs] = await Promise.all([api.listDischarges(), api.listRejected()]);
         // Filter by member if not coordinator
         if (!isCoordinator && user?.subject) {
-          setRequests(reqs.filter((r) => r.memberRef === user.subject || r.memberRef.includes(user.username)));
-          setRejections(rejs.filter((r) => r.memberRef === user.subject || r.memberRef.includes(user.username)));
+          setRequests(reqs.filter((r: any) => (r.memberRef && (r.memberRef === user.subject || r.memberRef.includes(user.username))) || r.consumerUsername === user.username));
+          setRejections(rejs.filter((r: any) => (r.memberRef && (r.memberRef === user.subject || r.memberRef.includes(user.username))) || r.consumerUsername === user.username));
         } else {
           setRequests(reqs);
           setRejections(rejs);
