@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Web App (Development Mode)",
+      "type": "shell",
+      "command": "npm --prefix web run dev",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Start Web App (Production Server)",
+      "type": "shell",
+      "command": "node web/server.cjs",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Build Web Frontend",
+      "type": "shell",
+      "command": "npm --prefix web run build",
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}
